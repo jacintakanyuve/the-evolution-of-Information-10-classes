@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Оценка информационного объёма данных - Интеллект-карта</title>
+  <style>
+    /* ==========================================================================
+       GLASSMORPHISM & DARK THEME CSS (NO EXTERNAL DEPENDENCIES)
+       ========================================================================== */
+    :root {
+      --bg-gradient-1: #0f172a; /* Slate 900 */
+      --bg-gradient-2: #1e1b4b; /* Indigo 950 */
+      --glass-bg: rgba(255, 255, 255, 0.07);
+      --glass-border: rgba(255, 255, 255, 0.15);
+      --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+      --accent-color: #3b82f6; /* Blue 500 */
+      --accent-hover: #60a5fa; /* Blue 400 */
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --success: #10b981;
+      --danger: #ef4444;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: linear-gradient(135deg, var(--bg-gradient-1), var(--bg-gradient-2));
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+      overflow-x: hidden;
+    }
+
+    /* Утилиты Glassmorphism */
+    .glass {
+      background: var(--glass-bg);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--glass-border);
+      box-shadow: var(--glass-shadow);
+      border-radius: 16px;
+    }
+
+    /* Заголовок */
+    header {
+      text-align: center;
+      margin-bottom: 40px;
+      padding: 20px;
+      width: 100%;
+      max-width: 800px;
+    }
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      background: -webkit-linear-gradient(45deg, #60a5fa, #a78bfa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 10px;
+    }
+    p.subtitle {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+
+    /* Структура Интеллект-карты */
+    .mindmap-wrapper {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      max-width: 900px;
+      gap: 40px;
+      margin-bottom: 60px;
+    }
+
+    .node {
+      padding: 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: transform 0.2s ease, background 0.3s ease;
+      position: relative;
+      z-index: 2;
+    }
+    
+    .node:hover, .node:active {
+      transform: translateY(-3px) scale(1.02);
+      background: rgba(255, 255, 255, 0.12);
+    }
+
+    .node-central {
+      width: 260px;
+      border: 2px solid var(--accent-color);
+      background: rgba(59, 130, 246, 0.15);
+    }
+    .node-central h2 {
+      font-size: 1.2rem;
+    }
+
+    .branches {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 20px;
+      width: 100%;
+      position: relative;
+    }
+
+    .node-branch {
+      width: 160px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+    
+    .node-icon {
+      font-size: 2rem;
+    }
+    .node-title {
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+
+    /* Визуальные связи (линии) для Desktop */
+    @media (min-width: 768px) {
+      .branches::before {
+        content: '';
+        position: absolute;
+        top: -25px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 80%;
+        height: 2px;
+        background: var(--glass-border);
+        z-index: 1;
+      }
+      .node-branch::before {
+        content: '';
+        position: absolute;
+        top: -25px;
+        left: 50%;
+        width: 2px;
+        height: 25px;
+        background: var(--glass-border);
+        z-index: 1;
+      }
+    }
+
+    /* Кнопки */
+    .btn {
+      background: var(--accent-color);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 12px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+    }
+    .btn:hover, .btn:active {
+      background: var(--accent-hover);
+    }
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.1);
+      box-shadow: none;
+    }
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    /* Модальные окна */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(5px);
+      -webkit-backdrop-filter: blur(5px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+      z-index: 100;
+      padding: 20px;
+    }
+    .modal-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .modal-content {
+      width: 100%;
+      max-width: 500px;
+      max-height: 90vh;
+      overflow-y: auto;
+      padding: 24px;
+      transform: translateY(20px) scale(0.95);
+      transition: transform 0.3s ease;
+    }
+    .modal-overlay.active .modal-content {
+      transform: translateY(0) scale(1);
+    }
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      border-bottom: 1px solid var(--glass-border);
+      padding-bottom: 10px;
+    }
+    .modal-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .close-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 1.5rem;
+      cursor: pointer;
+    }
+    .close-btn:hover { color: white; }
+    
+    .formula-box {
+      background: rgba(0, 0, 0, 0.3);
+      padding: 15px;
+      border-radius: 8px;
+      border-left: 4px solid var(--accent-color);
+      font-family: monospace;
+      font-size: 1.1rem;
+      margin: 15px 0;
+      color: #a78bfa;
+    }
+
+    /* Викторина */
+    .quiz-question {
+      margin-bottom: 20px;
+    }
+    .quiz-options {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 15px;
+    }
+    .quiz-option {
+      padding: 12px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--glass-border);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .quiz-option:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+    .quiz-option.selected {
+      border-color: var(--accent-color);
+      background: rgba(59, 130, 246, 0.2);
+    }
+    .quiz-option.correct {
+      border-color: var(--success);
+      background: rgba(16, 185, 129, 0.2);
+    }
+    .quiz-option.wrong {
+      border-color: var(--danger);
+      background: rgba(239, 68, 68, 0.2);
+    }
+    #quizResult {
+      margin-top: 20px;
+      font-weight: bold;
+      text-align: center;
+      font-size: 1.2rem;
+    }
+
+    /* Кастомный скроллбар для модалок */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); }
+    ::-webkit-scrollbar-thumb { background: var(--glass-border); border-radius: 10px; }
+  </style>
+</head>
+<body>
+
+  <header class="glass">
+    <h1>Оценка информационного объёма</h1>
+    <p class="subtitle">Информатика 10 класс • Нажмите на карточки для изучения</p>
+  </header>
+
+  <!-- Интеллект-карта -->
+  <div class="mindmap-wrapper">
+    <!-- Центральный узел -->
+    <div class="node node-central glass" onclick="openNodeModal('main')">
+      <h2>🧠 Объём данных и Скорость</h2>
+      <p style="font-size:0.8rem; margin-top:5px; color:var(--text-muted)">Главные принципы</p>
+    </div>
+
+    <!-- Ветви -->
+    <div class="branches">
+      <div class="node node-branch glass" onclick="openNodeModal('units')">
+        <div class="node-icon">⚖️</div>
+        <div class="node-title">Единицы измерения</div>
+      </div>
+      <div class="node node-branch glass" onclick="openNodeModal('text')">
+        <div class="node-icon">📝</div>
+        <div class="node-title">Текстовые данные</div>
+      </div>
+      <div class="node node-branch glass" onclick="openNodeModal('graphics')">
+        <div class="node-icon">🎨</div>
+        <div class="node-title">Графика</div>
+      </div>
+      <div class="node node-branch glass" onclick="openNodeModal('audio')">
+        <div class="node-icon">🎧</div>
+        <div class="node-title">Звук</div>
+      </div>
+      <div class="node node-branch glass" onclick="openNodeModal('network')">
+        <div class="node-icon">🌐</div>
+        <div class="node-title">Передача данных</div>
+      </div>
+    </div>
+  </div>
+
+  <button class="btn" onclick="openQuiz()">
+    🎯 Пройти тест-тренажер
+  </button>
+
+  <!-- Модальное окно Теории -->
+  <div class="modal-overlay" id="theoryModal">
+    <div class="modal-content glass">
+      <div class="modal-header">
+        <div class="modal-title" id="modalTitle">Заголовок</div>
+        <button class="close-btn" onclick="closeModals()">&times;</button>
+      </div>
+      
+      <div id="modalBody" style="line-height: 1.6;">
+        <!-- Контент инжектится через JS -->
+      </div>
+      
+      <div style="margin-top: 25px; display: flex; gap: 10px;">
+        <button class="btn btn-secondary" onclick="speakText()" id="speakBtn" style="flex: 1;">
+          🔊 Озвучить
+        </button>
+        <button class="btn" onclick="closeModals()" style="flex: 1;">Понятно</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Модальное окно Теста -->
+  <div class="modal-overlay" id="quizModal">
+    <div class="modal-content glass">
+      <div class="modal-header">
+        <div class="modal-title">🎯 Тест-тренажер (3 задачи)</div>
+        <button class="close-btn" onclick="closeModals()">&times;</button>
+      </div>
+      
+      <div id="quizContainer">
+        <!-- Вопросы инжектятся через JS -->
+      </div>
+      <div id="quizResult"></div>
+      
+      <div style="margin-top: 25px; text-align: center;">
+        <button class="btn btn-secondary" onclick="resetQuiz()" id="restartQuizBtn" style="display: none; width: 100%;">Повторить тест</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ЛОГИКА (JavaScript) -->
+  <script>
+    /* --- ДАННЫЕ ИНТЕЛЛЕКТ-КАРТЫ --- */
+    const mindMapData = {
+      'main': {
+        title: "🧠 Оценка объёма данных",
+        content: `
+          <p>Любая информация в компьютере представлена в цифровом виде (нули и единицы). Для того чтобы сохранить текст, картинку или звук на диск, либо передать их по сети, необходимо уметь оценивать их <b>информационный объём</b>.</p>
+          <br>
+          <p>Алфавитный подход к измерению информации не зависит от смысла сообщения, а учитывает только количество символов (или пикселей/отсчетов) и информационный вес одного элемента.</p>
+        `,
+        speakText: "Любая информация в компьютере представлена в цифровом виде. Для того чтобы сохранить текст, картинку или звук, необходимо уметь оценивать их информационный объём."
+      },
+      'units': {
+        title: "⚖️ Единицы измерения",
+        content: `
+          <p>Минимальная единица измерения информации — <b>бит</b> (0 или 1).</p>
+          <div class="formula-box">
+            1 байт = 8 бит<br>
+            1 Кбайт (Килобайт) = 1024 байта = 2¹⁰ байт<br>
+            1 Мбайт (Мегабайт) = 1024 Кбайта = 2²⁰ байт<br>
+            1 Гбайт (Гигабайт) = 1024 Мбайта = 2³⁰ байт
+          </div>
+          <p><i>Важно:</i> В информатике приставки Кило, Мега, Гига означают умножение не на 1000, а на степени двойки (1024).</p>
+        `,
+        speakText: "Минимальная единица измерения информации — бит. Один байт равен восьми битам. Один килобайт равен 1024 байтам. Приставки в информатике основаны на степенях двойки."
+      },
+      'text': {
+        title: "📝 Текстовые данные",
+        content: `
+          <p>При алфавитном подходе каждый символ текста имеет свой "информационный вес" (<b>i</b>).</p>
+          <p><b>Мощность алфавита (N)</b> — это полное количество символов в используемом алфавите.</p>
+          <div class="formula-box">
+            N = 2ⁱ<br>
+            I = K × i
+          </div>
+          <p>Где:<br>
+          <b>I</b> — информационный объём текста.<br>
+          <b>K</b> — количество символов в тексте.<br>
+          <b>i</b> — вес одного символа в битах.</p>
+          <p><i>Пример:</i> В кодировке Unicode (N=65536) каждый символ весит i=16 бит (2 байта).</p>
+        `,
+        speakText: "Объём текста зависит от количества символов и информационного веса одного символа. Формула: I равно K умножить на i. Мощность алфавита N вычисляется как два в степени i."
+      },
+      'graphics': {
+        title: "🎨 Графические данные",
+        content: `
+          <p>Растровое изображение состоит из точек — <b>пикселей</b>.</p>
+          <div class="formula-box">
+            I = X × Y × i<br>
+            N = 2ⁱ
+          </div>
+          <p>Где:<br>
+          <b>X, Y</b> — ширина и высота изображения в пикселях.<br>
+          <b>i</b> — глубина цвета (количество бит на 1 пиксель).<br>
+          <b>N</b> — количество цветов в палитре.</p>
+          <p><i>Пример:</i> Изображение 100x100 пикселей. Палитра 256 цветов (i=8 бит = 1 байт). Объём: 100 × 100 × 1 байт = 10 000 байт.</p>
+        `,
+        speakText: "Изображение состоит из пикселей. Объём равен произведению ширины, высоты и глубины цвета. Количество цветов в палитре равно двум в степени i."
+      },
+      'audio': {
+        title: "🎧 Звуковые данные",
+        content: `
+          <p>Звук оцифровывается дискретно: непрерывная волна разбивается на уровни (глубина) и временные отрезки (частота).</p>
+          <div class="formula-box">
+            I = H × i × t × k
+          </div>
+          <p>Где:<br>
+          <b>H</b> — частота дискретизации (Гц, количество измерений в секунду).<br>
+          <b>i</b> — глубина кодирования звука (бит).<br>
+          <b>t</b> — время звучания (секунды).<br>
+          <b>k</b> — количество каналов (1 - моно, 2 - стерео, 4 - квадро).</p>
+        `,
+        speakText: "Объём звукового файла зависит от частоты дискретизации, глубины кодирования, времени звучания и количества каналов. Формула: I равно H умножить на i умножить на t умножить на k."
+      },
+      'network': {
+        title: "🌐 Передача данных",
+        content: `
+          <p>Компьютерные сети передают данные с определенной скоростью (пропускной способностью).</p>
+          <div class="formula-box">
+            I = v × t
+          </div>
+          <p>Где:<br>
+          <b>I</b> — объём переданной информации (файла).<br>
+          <b>v</b> — скорость передачи (бит/с, байт/с и т.д.).<br>
+          <b>t</b> — время передачи (секунды).</p>
+          <p><i>Пример:</i> Скорость 512 Кбит/с, время 10 с. Объём = 5120 Кбит.</p>
+        `,
+        speakText: "Объём переданной по сети информации равен произведению скорости передачи данных на время передачи."
+      }
+    };
+
+    /* --- УПРАВЛЕНИЕ МОДАЛЬНЫМИ ОКНАМИ --- */
+    const theoryModal = document.getElementById('theoryModal');
+    const quizModal = document.getElementById('quizModal');
+    let currentSpeechText = "";
+
+    function openNodeModal(nodeKey) {
+      const data = mindMapData[nodeKey];
+      if(!data) return;
+      
+      document.getElementById('modalTitle').innerHTML = data.title;
+      document.getElementById('modalBody').innerHTML = data.content;
+      currentSpeechText = data.speakText;
+      
+      theoryModal.classList.add('active');
+    }
+
+    function closeModals() {
+      theoryModal.classList.remove('active');
+      quizModal.classList.remove('active');
+      stopSpeech();
+    }
+
+    // Закрытие при клике вне контента
+    window.onclick = function(event) {
+      if (event.target == theoryModal) closeModals();
+      if (event.target == quizModal) closeModals();
+    }
+
+    /* --- СИНТЕЗ РЕЧИ (WEB SPEECH API) --- */
+    let synth = window.speechSynthesis;
+    let isSpeaking = false;
+
+    function speakText() {
+      const btn = document.getElementById('speakBtn');
+      if (isSpeaking) {
+        stopSpeech();
+        btn.innerHTML = '🔊 Озвучить';
+      } else {
+        if (synth && currentSpeechText) {
+          const utterance = new SpeechSynthesisUtterance(currentSpeechText);
+          utterance.lang = 'ru-RU';
+          utterance.rate = 1.0;
+          
+          utterance.onend = function() {
+            isSpeaking = false;
+            document.getElementById('speakBtn').innerHTML = '🔊 Озвучить';
+          };
+          
+          synth.speak(utterance);
+          isSpeaking = true;
+          btn.innerHTML = '⏹ Остановить';
+        } else {
+          showToast("Синтез речи не поддерживается вашим браузером.");
+        }
+      }
+    }
+
+    function stopSpeech() {
+      if (synth) {
+        synth.cancel();
+        isSpeaking = false;
+      }
+      const btn = document.getElementById('speakBtn');
+      if(btn) btn.innerHTML = '🔊 Озвучить';
+    }
+
+    function showToast(msg) {
+      // Кастомный алерт без использования alert()
+      const toast = document.createElement('div');
+      toast.textContent = msg;
+      toast.style.position = 'fixed';
+      toast.style.bottom = '20px';
+      toast.style.left = '50%';
+      toast.style.transform = 'translateX(-50%)';
+      toast.style.background = 'rgba(239, 68, 68, 0.9)';
+      toast.style.padding = '10px 20px';
+      toast.style.borderRadius = '8px';
+      toast.style.zIndex = '1000';
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 3000);
+    }
+
+    /* --- ЛОГИКА ТЕСТА (МИНИ-ТРЕНАЖЕР) --- */
+    const quizData = [
+      {
+        question: "1. Каков объём текста из 100 символов, если мощность алфавита составляет 256 символов?",
+        options: ["100 бит", "100 байт", "800 байт", "256 байт"],
+        correct: 1, // Индекс правильного ответа (100 байт, т.к. 256 символов = 8 бит = 1 байт на символ)
+        explanation: "Мощность N=256 -> i=8 бит (1 байт). 100 символов × 1 байт = 100 байт."
+      },
+      {
+        question: "2. Изображение размером 10×10 пикселей использует 16-цветную палитру. Каков его информационный объём?",
+        options: ["160 байт", "400 байт", "50 байт", "1600 бит"],
+        correct: 2, // 16 цветов = 4 бита. 10x10x4 = 400 бит = 50 байт.
+        explanation: "16 цветов -> i=4 бита. Объём: 10×10×4 = 400 бит. Переводим в байты: 400 / 8 = 50 байт."
+      },
+      {
+        question: "3. Файл размером 2 Мбайт передается по каналу со скоростью 512 Кбайт/с. Сколько времени займёт передача?",
+        options: ["2 с", "4 с", "8 с", "256 с"],
+        correct: 1, // 2 Мбайт = 2048 Кбайт. 2048 / 512 = 4 с.
+        explanation: "2 Мбайт = 2048 Кбайт. t = I / v = 2048 / 512 = 4 секунды."
+      }
+    ];
+
+    let currentAnswers = [];
+
+    function openQuiz() {
+      stopSpeech();
+      theoryModal.classList.remove('active');
+      quizModal.classList.add('active');
+      renderQuiz();
+    }
+
+    function renderQuiz() {
+      const container = document.getElementById('quizContainer');
+      container.innerHTML = '';
+      currentAnswers = new Array(quizData.length).fill(null);
+      document.getElementById('quizResult').innerHTML = '';
+      document.getElementById('restartQuizBtn').style.display = 'none';
+
+      quizData.forEach((q, qIndex) => {
+        const qDiv = document.createElement('div');
+        qDiv.className = 'quiz-question';
+        
+        const qTitle = document.createElement('h3');
+        qTitle.textContent = q.question;
+        qTitle.style.fontSize = '1.05rem';
+        qDiv.appendChild(qTitle);
+
+        const optionsDiv = document.createElement('div');
+        optionsDiv.className = 'quiz-options';
+
+        q.options.forEach((opt, optIndex) => {
+          const optDiv = document.createElement('div');
+          optDiv.className = `quiz-option q${qIndex}`;
+          optDiv.textContent = opt;
+          optDiv.onclick = () => selectOption(qIndex, optIndex, qDiv);
+          optionsDiv.appendChild(optDiv);
+        });
+        
+        qDiv.appendChild(optionsDiv);
+        
+        // Место для объяснения
+        const expDiv = document.createElement('div');
+        expDiv.id = `exp-${qIndex}`;
+        expDiv.style.marginTop = '10px';
+        expDiv.style.fontSize = '0.9rem';
+        expDiv.style.color = 'var(--text-muted)';
+        expDiv.style.display = 'none';
+        qDiv.appendChild(expDiv);
+
+        container.appendChild(qDiv);
+      });
+    }
+
+    function selectOption(qIndex, optIndex, qDiv) {
+      // Если уже ответили на этот вопрос, игнорируем
+      if (currentAnswers[qIndex] !== null) return;
+
+      currentAnswers[qIndex] = optIndex;
+      
+      const options = qDiv.querySelectorAll('.quiz-option');
+      const correctIndex = quizData[qIndex].correct;
+      
+      options.forEach((opt, idx) => {
+        if (idx === correctIndex) {
+          opt.classList.add('correct');
+        } else if (idx === optIndex && idx !== correctIndex) {
+          opt.classList.add('wrong');
+        }
+      });
+
+      // Показать объяснение
+      const expDiv = document.getElementById(`exp-${qIndex}`);
+      expDiv.innerHTML = `<i>${quizData[qIndex].explanation}</i>`;
+      expDiv.style.display = 'block';
+
+      checkQuizCompletion();
+    }
+
+    function checkQuizCompletion() {
+      if (currentAnswers.includes(null)) return; // Еще не все решено
+
+      let score = 0;
+      currentAnswers.forEach((ans, idx) => {
+        if (ans === quizData[idx].correct) score++;
+      });
+
+      const resDiv = document.getElementById('quizResult');
+      resDiv.innerHTML = `Вы ответили правильно на ${score} из ${quizData.length} вопросов!`;
+      if (score === quizData.length) {
+        resDiv.style.color = 'var(--success)';
+        resDiv.innerHTML += ' 🏆 Отличный результат!';
+      } else {
+        resDiv.style.color = 'var(--accent-hover)';
+      }
+      
+      document.getElementById('restartQuizBtn').style.display = 'inline-block';
+    }
+
+    function resetQuiz() {
+      renderQuiz();
+    }
+  </script>
+</body>
+</html>
